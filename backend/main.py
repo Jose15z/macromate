@@ -4,8 +4,19 @@ from pydantic import BaseModel
 import requests
 from datetime import date
 from db import init_db, get_conn
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="MacroMate API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "https://mcrmt.vercel.app",
+    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.add_middleware(
     CORSMiddleware,

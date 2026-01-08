@@ -1,9 +1,14 @@
-const BASE = "http://localhost:8000";
+const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+
+async function asJson(res) {
+  const text = await res.text();
+  if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+  return text ? JSON.parse(text) : null;
+}
 
 export async function fetchProduct(barcode) {
   const res = await fetch(`${BASE}/api/product/${barcode}`);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return asJson(res);
 }
 
 export async function addToDay(payload) {
@@ -12,12 +17,10 @@ export async function addToDay(payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return asJson(res);
 }
 
 export async function fetchDay(day) {
   const res = await fetch(`${BASE}/api/day/${day}`);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return asJson(res);
 }
