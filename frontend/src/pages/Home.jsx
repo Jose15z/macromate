@@ -43,11 +43,6 @@ export default function Home({ onSelect }) {
           <div className="kbdHint">Tip: press <b>Enter</b> to search.</div>
 
           <div className="divider" />
-
-          <div className="badge">✅ Portfolio-ready: API + UI + workflow</div>
-          <div className="footerNote">
-            If a barcode fails, try another product or confirm the API endpoint in the backend docs.
-          </div>
         </div>
 
         <div>
