@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import * as api from "../api";
 import { useAuth } from "../AuthContext";
+import CalorieRing from "../components/CalorieRing";
 import Loading from "../components/Loading";
 import MacroProgress from "../components/MacroProgress";
 import MealSection from "../components/MealSection";
@@ -84,16 +85,35 @@ export default function Dashboard() {
       {day && (
         <>
           <section className="card progress-card">
-            <div className="progress-title">
-              <h2>{profile?.display_name ? `${profile.display_name}'s day` : "Your day"}</h2>
-              <span className="muted small">
-                {Math.max(0, Math.round(day.remaining.kcal)).toLocaleString()} kcal left
-              </span>
+            <h2 className="progress-title">
+              {profile?.display_name ? `${profile.display_name}'s day` : "Your day"}
+            </h2>
+            <div className="progress-layout">
+              <CalorieRing consumed={day.totals.kcal} goal={day.goals.kcal} />
+              <div className="macro-bars">
+                <MacroProgress
+                  label="Protein"
+                  consumed={day.totals.protein}
+                  goal={day.goals.protein}
+                  unit="g"
+                  color="var(--c-protein)"
+                />
+                <MacroProgress
+                  label="Carbohydrates"
+                  consumed={day.totals.carbs}
+                  goal={day.goals.carbs}
+                  unit="g"
+                  color="var(--c-carbs)"
+                />
+                <MacroProgress
+                  label="Fat"
+                  consumed={day.totals.fat}
+                  goal={day.goals.fat}
+                  unit="g"
+                  color="var(--c-fat)"
+                />
+              </div>
             </div>
-            <MacroProgress label="Calories" consumed={day.totals.kcal} goal={day.goals.kcal} unit="kcal" />
-            <MacroProgress label="Protein" consumed={day.totals.protein} goal={day.goals.protein} unit="g" />
-            <MacroProgress label="Carbohydrates" consumed={day.totals.carbs} goal={day.goals.carbs} unit="g" />
-            <MacroProgress label="Fat" consumed={day.totals.fat} goal={day.goals.fat} unit="g" />
           </section>
 
           <div className="quick-actions">

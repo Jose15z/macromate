@@ -2,6 +2,7 @@ import { Suspense, lazy } from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import Loading from "./components/Loading";
+import Logo from "./components/Logo";
 import AddFood from "./pages/AddFood";
 import Dashboard from "./pages/Dashboard";
 import Goals from "./pages/Goals";
@@ -27,6 +28,7 @@ function Header() {
   return (
     <header className="app-header">
       <Link to="/" className="brand">
+        <Logo size={26} />
         Macro<span>Mate</span>
       </Link>
       {user && (

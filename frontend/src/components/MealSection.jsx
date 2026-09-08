@@ -7,6 +7,13 @@ const MEAL_LABELS = {
   snack: "Snacks",
 };
 
+const MEAL_ICONS = {
+  breakfast: "🥐",
+  lunch: "🥗",
+  dinner: "🍽️",
+  snack: "🍎",
+};
+
 function EntryRow({ entry, onUpdateGrams, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [grams, setGrams] = useState(entry.grams);
@@ -30,6 +37,13 @@ function EntryRow({ entry, onUpdateGrams, onDelete }) {
 
   return (
     <div className="entry-row">
+      {entry.image_url ? (
+        <img src={entry.image_url} alt="" className="entry-thumb" />
+      ) : (
+        <div className="entry-thumb placeholder" aria-hidden="true">
+          🍴
+        </div>
+      )}
       <div className="entry-main">
         <div className="entry-name">{entry.name}</div>
         <div className="entry-sub">
@@ -87,7 +101,12 @@ export default function MealSection({ meal, onAdd, onUpdateGrams, onDelete }) {
   return (
     <section className="meal card">
       <div className="meal-head">
-        <h3>{MEAL_LABELS[meal.meal_type]}</h3>
+        <h3>
+          <span className="meal-icon" aria-hidden="true">
+            {MEAL_ICONS[meal.meal_type]}
+          </span>
+          {MEAL_LABELS[meal.meal_type]}
+        </h3>
         <span className="meal-kcal">
           {meal.entries.length > 0 && `${Math.round(meal.totals.kcal)} kcal`}
         </span>

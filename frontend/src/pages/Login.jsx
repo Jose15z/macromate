@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import AuthHero from "../components/AuthHero";
 
 export default function Login() {
   const { login } = useAuth();
@@ -28,8 +29,7 @@ export default function Login() {
 
   return (
     <div className="auth-page">
-      <h2>Welcome back</h2>
-      <p className="muted">Log in to keep tracking your macros.</p>
+      <AuthHero tagline="Welcome back — log in to keep tracking your macros." />
       <form onSubmit={handleSubmit} className="form card">
         <label>
           Email

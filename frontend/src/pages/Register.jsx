@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import AuthHero from "../components/AuthHero";
 
 export default function Register() {
   const { register } = useAuth();
@@ -31,8 +32,7 @@ export default function Register() {
 
   return (
     <div className="auth-page">
-      <h2>Create your account</h2>
-      <p className="muted">Track calories and macros across every meal.</p>
+      <AuthHero tagline="Create your account — track calories and macros across every meal." />
       <form onSubmit={handleSubmit} className="form card">
         <label>
           Name
