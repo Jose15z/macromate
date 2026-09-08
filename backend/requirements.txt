@@ -2,3 +2,6 @@ fastapi
 uvicorn
 requests
 pydantic
+python-multipart
+# optional: enables photo food recognition when ANTHROPIC_API_KEY is set
+anthropic

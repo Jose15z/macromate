@@ -1,24 +1,11 @@
-import { useState } from "react";
-
-export default function Home({ onSelect }) {
-  const [barcode, setBarcode] = useState("");
-
+export default function MacroCard({ label, value, unit = "" }) {
   return (
-    <div>
-      <h3>Search by barcode</h3>
-      <p>Type a barcode (e.g., from a product label) and fetch macros.</p>
-
-      <div style={{ display: "flex", gap: 10 }}>
-        <input
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          placeholder="Barcode..."
-          style={{ flex: 1, padding: 10 }}
-        />
-        <button disabled={!barcode.trim()} onClick={() => onSelect(barcode.trim())}>
-          Search
-        </button>
+    <div className="macro-card">
+      <div className="macro-card-value">
+        {value}
+        {unit && <span className="macro-card-unit">{unit}</span>}
       </div>
+      <div className="macro-card-label">{label}</div>
     </div>
   );
 }
