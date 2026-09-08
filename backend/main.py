@@ -8,7 +8,10 @@ app = FastAPI(title="MacroMate API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # dev; restrict in production
+    allow_origins=[
+        "http://localhost:5173",
+        "https://mcrmt.vercel.app",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
