@@ -3,7 +3,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from auth import get_current_user
-from db import get_conn
+from db import get_conn, insert_and_get_id
 from schemas import FoodCreate, FoodUpdate
 
 router = APIRouter(prefix="/api", tags=["foods"])
@@ -50,7 +50,8 @@ def create_food(payload: FoodCreate, user: dict = Depends(get_current_user)):
                     status_code=409, detail="A food with this barcode already exists"
                 )
 
-        cur = conn.execute(
+        food_id = insert_and_get_id(
+            conn,
             """
             INSERT INTO foods (user_id, source, barcode, name, brand, image_url,
                                kcal_100g, protein_100g, carbs_100g, fat_100g,
@@ -71,7 +72,7 @@ def create_food(payload: FoodCreate, user: dict = Depends(get_current_user)):
             ),
         )
         conn.commit()
-        row = conn.execute("SELECT * FROM foods WHERE id = ?", (cur.lastrowid,)).fetchone()
+        row = conn.execute("SELECT * FROM foods WHERE id = ?", (food_id,)).fetchone()
         return food_dict(row)
     finally:
         conn.close()
@@ -105,7 +106,7 @@ def list_foods(
                 WHERE f.user_id = ?
             """
             if search:
-                sql += " AND (f.name LIKE ? OR f.brand LIKE ?)"
+                sql += " AND (LOWER(f.name) LIKE LOWER(?) OR LOWER(f.brand) LIKE LOWER(?))"
                 like = f"%{search.strip()}%"
                 params.extend([like, like])
             sql += f" GROUP BY f.id ORDER BY {order} LIMIT 30"
@@ -113,7 +114,7 @@ def list_foods(
             return {"foods": [food_dict(r) for r in rows]}
 
         if search:
-            sql += " AND (name LIKE ? OR brand LIKE ?)"
+            sql += " AND (LOWER(name) LIKE LOWER(?) OR LOWER(brand) LIKE LOWER(?))"
             like = f"%{search.strip()}%"
             params.extend([like, like])
         sql += " ORDER BY created_at DESC LIMIT 100" if list_type == "scanned" else " ORDER BY name LIMIT 100"

@@ -14,32 +14,77 @@ function itemMacros(item) {
   };
 }
 
+const MAX_DIMENSION = 1600;
+const RESIZE_THRESHOLD_BYTES = 2 * 1024 * 1024;
+
+/** Downscale large photos client-side (phone cameras easily exceed the
+ * upload limit) and normalize them to JPEG. Falls back to the original
+ * file if the image can't be decoded. */
+async function prepareImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = url;
+    });
+    const largest = Math.max(img.naturalWidth, img.naturalHeight);
+    if (largest <= MAX_DIMENSION && file.size <= RESIZE_THRESHOLD_BYTES) {
+      return file;
+    }
+    const scale = Math.min(1, MAX_DIMENSION / largest);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85)
+    );
+    if (!blob) return file;
+    return new File([blob], "photo.jpg", { type: "image/jpeg" });
+  } catch {
+    return file;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export default function Photo() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { date, meal: initialMeal } = logTarget(searchParams);
 
-  const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const libraryInputRef = useRef(null);
   const [meal, setMeal] = useState(initialMeal);
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [preparing, setPreparing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  function pickFile(e) {
+  async function pickFile(e) {
     const f = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
     if (!f) return;
-    setFile(f);
     setResult(null);
     setItems([]);
     setError("");
-    setPreviewUrl((old) => {
-      if (old) URL.revokeObjectURL(old);
-      return URL.createObjectURL(f);
-    });
+    setPreparing(true);
+    try {
+      const prepared = await prepareImage(f);
+      setFile(prepared);
+      setPreviewUrl((old) => {
+        if (old) URL.revokeObjectURL(old);
+        return URL.createObjectURL(prepared);
+      });
+    } finally {
+      setPreparing(false);
+    }
   }
 
   async function analyze() {
@@ -114,30 +159,65 @@ export default function Photo() {
         adjust everything before it is saved.
       </p>
 
+      {/* Two separate inputs: `capture` forces the camera on phones, so the
+          library picker must be its own input WITHOUT the capture attribute. */}
       <input
-        ref={fileInputRef}
+        ref={cameraInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/gif"
         capture="environment"
         hidden
         onChange={pickFile}
       />
+      <input
+        ref={libraryInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        hidden
+        onChange={pickFile}
+      />
 
       {!previewUrl && (
-        <button className="btn primary big" onClick={() => fileInputRef.current.click()}>
-          📸 Take / choose photo
-        </button>
+        <div className="photo-pickers">
+          <button
+            className="btn primary big"
+            onClick={() => cameraInputRef.current.click()}
+            disabled={preparing}
+          >
+            📸 Take a photo
+          </button>
+          <button
+            className="btn big"
+            onClick={() => libraryInputRef.current.click()}
+            disabled={preparing}
+          >
+            🖼️ Upload from library
+          </button>
+        </div>
       )}
+
+      {preparing && <Loading label="Preparing photo…" />}
 
       {previewUrl && (
         <div className="photo-preview card">
           <img src={previewUrl} alt="Selected meal" />
           <div className="dialog-actions">
-            <button className="btn ghost" onClick={() => fileInputRef.current.click()} disabled={analyzing}>
-              Change photo
+            <button
+              className="btn ghost"
+              onClick={() => cameraInputRef.current.click()}
+              disabled={analyzing || preparing}
+            >
+              Retake
+            </button>
+            <button
+              className="btn ghost"
+              onClick={() => libraryInputRef.current.click()}
+              disabled={analyzing || preparing}
+            >
+              Choose another
             </button>
             {!result && (
-              <button className="btn primary" onClick={analyze} disabled={analyzing}>
+              <button className="btn primary" onClick={analyze} disabled={analyzing || preparing}>
                 {analyzing ? "Analyzing…" : "Analyze photo"}
               </button>
             )}

@@ -8,7 +8,7 @@ from auth import (
     revoke_token,
     verify_password,
 )
-from db import get_conn
+from db import get_conn, insert_and_get_id
 from schemas import LoginRequest, ProfileUpdate, RegisterRequest
 
 router = APIRouter(prefix="/api", tags=["auth"])
@@ -38,24 +38,25 @@ def _auth_response(conn, user_id: int, email: str) -> dict:
 
 @router.post("/auth/register", status_code=201)
 def register(payload: RegisterRequest):
+    email = payload.email.lower()
     conn = get_conn()
     try:
         existing = conn.execute(
-            "SELECT id FROM users WHERE email = ?", (payload.email,)
+            "SELECT id FROM users WHERE email = ?", (email,)
         ).fetchone()
         if existing:
             raise HTTPException(status_code=409, detail="Email already registered")
 
-        cur = conn.execute(
+        user_id = insert_and_get_id(
+            conn,
             "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-            (payload.email.lower(), hash_password(payload.password)),
+            (email, hash_password(payload.password)),
         )
-        user_id = cur.lastrowid
         conn.execute(
             "INSERT INTO profiles (user_id, display_name) VALUES (?, ?)",
             (user_id, payload.display_name.strip()),
         )
-        result = _auth_response(conn, user_id, payload.email.lower())
+        result = _auth_response(conn, user_id, email)
         conn.commit()
         return result
     finally:
@@ -68,7 +69,7 @@ def login(payload: LoginRequest):
     try:
         user = conn.execute(
             "SELECT id, email, password_hash FROM users WHERE email = ?",
-            (payload.email,),
+            (payload.email.lower(),),
         ).fetchone()
         if user is None or not verify_password(payload.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="Invalid email or password")

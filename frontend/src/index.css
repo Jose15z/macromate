@@ -589,6 +589,7 @@ input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color:
 /* ---------- photo recognition ---------- */
 
 .photo-page { display: flex; flex-direction: column; gap: 1rem; }
+.photo-pickers { display: flex; flex-direction: column; gap: 0.6rem; }
 .photo-preview img {
   width: 100%;
   max-height: 320px;

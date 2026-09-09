@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from auth import get_current_user
-from db import get_conn
+from db import get_conn, insert_and_get_id
 from schemas import DATE_PATTERN, EntryCreate, EntryUpdate, InlineFood
 
 router = APIRouter(prefix="/api", tags=["diary"])
@@ -73,7 +73,8 @@ def _resolve_food_id(conn, user_id: int, payload: EntryCreate) -> int:
             return existing["id"]
 
     is_saved = food.is_saved if food.is_saved is not None else food.source != "ai"
-    cur = conn.execute(
+    return insert_and_get_id(
+        conn,
         """
         INSERT INTO foods (user_id, source, barcode, name, brand, image_url,
                            kcal_100g, protein_100g, carbs_100g, fat_100g,
@@ -95,7 +96,6 @@ def _resolve_food_id(conn, user_id: int, payload: EntryCreate) -> int:
             int(is_saved),
         ),
     )
-    return cur.lastrowid
 
 
 @router.post("/diary/entries", status_code=201)
@@ -103,7 +103,8 @@ def add_entry(payload: EntryCreate, user: dict = Depends(get_current_user)):
     conn = get_conn()
     try:
         food_id = _resolve_food_id(conn, user["id"], payload)
-        cur = conn.execute(
+        entry_id = insert_and_get_id(
+            conn,
             """
             INSERT INTO entries (user_id, food_id, date, meal_type, grams)
             VALUES (?, ?, ?, ?, ?)
@@ -118,7 +119,7 @@ def add_entry(payload: EntryCreate, user: dict = Depends(get_current_user)):
             FROM entries e JOIN foods f ON f.id = e.food_id
             WHERE e.id = ?
             """,
-            (cur.lastrowid,),
+            (entry_id,),
         ).fetchone()
         return _entry_dict(row)
     finally:
