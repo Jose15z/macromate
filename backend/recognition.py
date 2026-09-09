@@ -12,6 +12,7 @@ The active provider is chosen at request time:
 
 import base64
 import os
+import re
 
 import requests
 from pydantic import BaseModel, Field
@@ -63,6 +64,64 @@ class DisabledProvider:
 
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+GEMINI_LIST_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+
+# Used only if asking Google for its model list fails (name current as of late 2026)
+GEMINI_FALLBACK_MODEL = "gemini-3.8-flash"
+
+_gemini_model_cache: str | None = None
+
+
+def _model_score(name: str):
+    """Rank a Gemini model name: stable > preview, full > lite, newest version."""
+    if any(x in name for x in ("image", "live", "tts", "audio", "embedding", "veo", "imagen")):
+        return None
+    m = re.search(r"(\d+)\.(\d+)", name)
+    version = (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+    stable = not any(x in name for x in ("preview", "exp"))
+    full = "lite" not in name
+    return (stable, full, version, -len(name))
+
+
+def _pick_gemini_model(api_key: str) -> str:
+    """Choose a vision-capable flash model the key can actually use.
+
+    Google retires model names frequently (a hardcoded id 404s within
+    months), so ask the API what's available and cache the answer.
+    GEMINI_MODEL overrides everything.
+    """
+    configured = os.environ.get("GEMINI_MODEL")
+    if configured:
+        return configured
+
+    global _gemini_model_cache
+    if _gemini_model_cache:
+        return _gemini_model_cache
+
+    try:
+        resp = requests.get(
+            GEMINI_LIST_URL,
+            params={"pageSize": 1000},
+            headers={"x-goog-api-key": api_key},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        names = [
+            m["name"].split("/", 1)[-1]
+            for m in resp.json().get("models", [])
+            if "generateContent" in m.get("supportedGenerationMethods", [])
+        ]
+    except (requests.RequestException, ValueError, KeyError):
+        return GEMINI_FALLBACK_MODEL
+
+    candidates = [n for n in names if "flash" in n and _model_score(n)]
+    if not candidates:
+        candidates = [n for n in names if _model_score(n)]
+    if not candidates:
+        return GEMINI_FALLBACK_MODEL
+
+    _gemini_model_cache = max(candidates, key=_model_score)
+    return _gemini_model_cache
 
 # Gemini structured-output schema (OpenAPI-style subset) mirroring RecognitionOutput
 GEMINI_SCHEMA = {
@@ -96,8 +155,19 @@ GEMINI_SCHEMA = {
 class GeminiProvider:
     name = "gemini"
 
+    def _call(self, api_key: str, model: str, body: dict):
+        return requests.post(
+            GEMINI_URL.format(model=model),
+            json=body,
+            # key goes in a header, never in the URL
+            headers={"x-goog-api-key": api_key},
+            timeout=60,
+        )
+
     def recognize(self, image_bytes: bytes, media_type: str) -> RecognitionResult:
-        model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        global _gemini_model_cache
+        api_key = os.environ["GEMINI_API_KEY"]
+        model = _pick_gemini_model(api_key)
         body = {
             "contents": [
                 {
@@ -119,13 +189,12 @@ class GeminiProvider:
         }
 
         try:
-            resp = requests.post(
-                GEMINI_URL.format(model=model),
-                json=body,
-                # key goes in a header, never in the URL
-                headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]},
-                timeout=60,
-            )
+            resp = self._call(api_key, model, body)
+            if resp.status_code == 404 and not os.environ.get("GEMINI_MODEL"):
+                # Google retired the cached model name — re-discover and retry once
+                _gemini_model_cache = None
+                model = _pick_gemini_model(api_key)
+                resp = self._call(api_key, model, body)
         except requests.RequestException:
             return RecognitionResult(
                 available=True,
@@ -134,12 +203,16 @@ class GeminiProvider:
             )
 
         if resp.status_code != 200:
+            try:
+                detail = resp.json()["error"]["message"][:200]
+            except (ValueError, KeyError, TypeError):
+                detail = ""
             return RecognitionResult(
                 available=True,
                 provider=self.name,
                 message=(
-                    f"Recognition service error (HTTP {resp.status_code}). "
-                    "Check the GEMINI_API_KEY configured on the server."
+                    f"Recognition service error (HTTP {resp.status_code}, model {model}). "
+                    + (detail or "Check the GEMINI_API_KEY configured on the server.")
                 ),
             )
 
