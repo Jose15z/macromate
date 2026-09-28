@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import * as api from "../api";
 import Loading from "../components/Loading";
+import Icon from "../components/Icon";
 import { MEAL_LABELS, MEAL_TYPES, logTarget } from "../utils";
 
 function itemMacros(item) {
@@ -184,14 +185,16 @@ export default function Photo() {
             onClick={() => cameraInputRef.current.click()}
             disabled={preparing}
           >
-            📸 Take a photo
+            <Icon name="camera" />
+            Take a photo
           </button>
           <button
             className="btn big"
             onClick={() => libraryInputRef.current.click()}
             disabled={preparing}
           >
-            🖼️ Upload from library
+            <Icon name="image" />
+            Upload from library
           </button>
         </div>
       )}

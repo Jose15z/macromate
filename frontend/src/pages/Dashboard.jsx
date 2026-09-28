@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import * as api from "../api";
 import { useAuth } from "../AuthContext";
 import CalorieRing from "../components/CalorieRing";
+import Icon from "../components/Icon";
 import Loading from "../components/Loading";
 import MacroProgress from "../components/MacroProgress";
 import MealSection from "../components/MealSection";
@@ -53,7 +54,7 @@ export default function Dashboard() {
     <div className="dashboard">
       <div className="date-nav">
         <button className="icon-btn" onClick={() => goTo(shiftDate(date, -1))} title="Previous day">
-          ‹
+          <Icon name="chevronLeft" />
         </button>
         <div className="date-nav-center">
           <span className="date-label">{formatDate(date)}</span>
@@ -70,7 +71,7 @@ export default function Dashboard() {
           disabled={date >= todayISO()}
           title="Next day"
         >
-          ›
+          <Icon name="chevronRight" />
         </button>
       </div>
 
@@ -118,13 +119,16 @@ export default function Dashboard() {
 
           <div className="quick-actions">
             <button className="btn" onClick={() => navigate(`/scan?date=${date}&meal=breakfast`)}>
-              📷 Scan barcode
+              <Icon name="scan" />
+              Scan barcode
             </button>
             <button className="btn" onClick={() => navigate(`/photo?date=${date}&meal=breakfast`)}>
-              🍛 Photo of meal
+              <Icon name="camera" />
+              Photo of meal
             </button>
             <button className="btn" onClick={() => navigate(`/manual?date=${date}&meal=breakfast`)}>
-              ✏️ Manual entry
+              <Icon name="pencil" />
+              Manual entry
             </button>
           </div>
 

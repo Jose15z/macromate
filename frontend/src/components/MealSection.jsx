@@ -1,17 +1,11 @@
 import { useState } from "react";
+import Icon from "./Icon";
 
 const MEAL_LABELS = {
   breakfast: "Breakfast",
   lunch: "Lunch",
   dinner: "Dinner",
   snack: "Snacks",
-};
-
-const MEAL_ICONS = {
-  breakfast: "🥐",
-  lunch: "🥗",
-  dinner: "🍽️",
-  snack: "🍎",
 };
 
 function EntryRow({ entry, onUpdateGrams, onDelete }) {
@@ -41,7 +35,7 @@ function EntryRow({ entry, onUpdateGrams, onDelete }) {
         <img src={entry.image_url} alt="" className="entry-thumb" />
       ) : (
         <div className="entry-thumb placeholder" aria-hidden="true">
-          🍴
+          <Icon name="utensils" size={15} />
         </div>
       )}
       <div className="entry-main">
@@ -85,10 +79,10 @@ function EntryRow({ entry, onUpdateGrams, onDelete }) {
         {!editing && (
           <div className="entry-actions">
             <button className="icon-btn" title="Edit amount" onClick={() => setEditing(true)}>
-              ✎
+              <Icon name="pencil" size={14} />
             </button>
             <button className="icon-btn danger" title="Remove" onClick={() => onDelete(entry)}>
-              ✕
+              <Icon name="x" size={14} />
             </button>
           </div>
         )}
@@ -101,12 +95,7 @@ export default function MealSection({ meal, onAdd, onUpdateGrams, onDelete }) {
   return (
     <section className="meal card">
       <div className="meal-head">
-        <h3>
-          <span className="meal-icon" aria-hidden="true">
-            {MEAL_ICONS[meal.meal_type]}
-          </span>
-          {MEAL_LABELS[meal.meal_type]}
-        </h3>
+        <h3>{MEAL_LABELS[meal.meal_type]}</h3>
         <span className="meal-kcal">
           {meal.entries.length > 0 && `${Math.round(meal.totals.kcal)} kcal`}
         </span>
@@ -126,7 +115,8 @@ export default function MealSection({ meal, onAdd, onUpdateGrams, onDelete }) {
       )}
 
       <button className="btn ghost add-food-btn" onClick={() => onAdd(meal.meal_type)}>
-        + Add food
+        <Icon name="plus" size={14} />
+        Add food
       </button>
     </section>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import * as api from "../api";
 import FoodListItem from "../components/FoodListItem";
+import Icon from "../components/Icon";
 import Loading from "../components/Loading";
 import { MEAL_LABELS, MEAL_TYPES, logTarget } from "../utils";
 
@@ -137,13 +138,16 @@ export default function AddFood() {
 
       <div className="quick-actions">
         <button className="btn" onClick={() => navigate(`/scan?${query}`)}>
-          📷 Scan barcode
+          <Icon name="scan" />
+          Scan barcode
         </button>
         <button className="btn" onClick={() => navigate(`/photo?${query}`)}>
-          🍛 Photo of meal
+          <Icon name="camera" />
+          Photo of meal
         </button>
         <button className="btn" onClick={() => navigate(`/manual?${query}`)}>
-          ✏️ Manual entry
+          <Icon name="pencil" />
+          Manual entry
         </button>
       </div>
 

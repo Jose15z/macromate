@@ -1,10 +1,14 @@
+import Icon from "./Icon";
+
 export default function FoodListItem({ food, onSelect, onDelete }) {
   return (
     <div className="food-item" onClick={() => onSelect(food)}>
       {food.image_url ? (
         <img src={food.image_url} alt="" className="food-thumb" />
       ) : (
-        <div className="food-thumb placeholder">🍽</div>
+        <div className="food-thumb placeholder" aria-hidden="true">
+          <Icon name="utensils" size={16} />
+        </div>
       )}
       <div className="food-item-main">
         <div className="food-item-name">
@@ -25,7 +29,7 @@ export default function FoodListItem({ food, onSelect, onDelete }) {
             onDelete(food);
           }}
         >
-          ✕
+          <Icon name="x" size={14} />
         </button>
       )}
     </div>

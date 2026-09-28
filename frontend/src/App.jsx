@@ -29,7 +29,7 @@ function Header() {
     <header className="app-header">
       <Link to="/" className="brand">
         <Logo size={26} />
-        Macro<span>Mate</span>
+        <span>MacroMate</span>
       </Link>
       {user && (
         <nav className="header-nav">
