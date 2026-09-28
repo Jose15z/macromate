@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import * as api from "../api";
-import Loading from "../components/Loading";
 import Icon from "../components/Icon";
-import { MEAL_LABELS, MEAL_TYPES, logTarget } from "../utils";
+import Loading from "../components/Loading";
+import { useT } from "../i18n";
+import { MEAL_TYPES, logTarget } from "../utils";
 
 function itemMacros(item) {
   const scale = (Number(item.estimated_grams) || 0) / 100;
@@ -52,6 +53,7 @@ async function prepareImage(file) {
 }
 
 export default function Photo() {
+  const { t } = useT();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { date, meal: initialMeal } = logTarget(searchParams);
@@ -99,7 +101,7 @@ export default function Photo() {
         (data.foods || []).map((f, i) => ({ ...f, _key: i, included: true }))
       );
     } catch (err) {
-      setError(err.message || "Could not analyze the photo");
+      setError(err.message || t("photo.analyzeError"));
     } finally {
       setAnalyzing(false);
     }
@@ -147,18 +149,15 @@ export default function Photo() {
       }
       navigate(`/?date=${date}`);
     } catch (err) {
-      setError(err.message || "Could not save the entries");
+      setError(err.message || t("photo.saveError"));
       setSaving(false);
     }
   }
 
   return (
     <div className="photo-page">
-      <h2>Photo of your meal</h2>
-      <p className="muted small">
-        Take a picture and let AI estimate what's on the plate. You review and
-        adjust everything before it is saved.
-      </p>
+      <h2>{t("photo.title")}</h2>
+      <p className="muted small">{t("photo.intro")}</p>
 
       {/* Two separate inputs: `capture` forces the camera on phones, so the
           library picker must be its own input WITHOUT the capture attribute. */}
@@ -186,7 +185,7 @@ export default function Photo() {
             disabled={preparing}
           >
             <Icon name="camera" />
-            Take a photo
+            {t("photo.take")}
           </button>
           <button
             className="btn big"
@@ -194,41 +193,45 @@ export default function Photo() {
             disabled={preparing}
           >
             <Icon name="image" />
-            Upload from library
+            {t("photo.upload")}
           </button>
         </div>
       )}
 
-      {preparing && <Loading label="Preparing photo…" />}
+      {preparing && <Loading label={t("photo.preparing")} />}
 
       {previewUrl && (
         <div className="photo-preview card">
-          <img src={previewUrl} alt="Selected meal" />
+          <img src={previewUrl} alt="" />
           <div className="dialog-actions">
             <button
               className="btn ghost"
               onClick={() => cameraInputRef.current.click()}
               disabled={analyzing || preparing}
             >
-              Retake
+              {t("photo.retake")}
             </button>
             <button
               className="btn ghost"
               onClick={() => libraryInputRef.current.click()}
               disabled={analyzing || preparing}
             >
-              Choose another
+              {t("photo.chooseAnother")}
             </button>
             {!result && (
-              <button className="btn primary" onClick={analyze} disabled={analyzing || preparing}>
-                {analyzing ? "Analyzing…" : "Analyze photo"}
+              <button
+                className="btn primary"
+                onClick={analyze}
+                disabled={analyzing || preparing}
+              >
+                {analyzing ? t("photo.analyzing") : t("photo.analyze")}
               </button>
             )}
           </div>
         </div>
       )}
 
-      {analyzing && <Loading label="Identifying foods in your photo…" />}
+      {analyzing && <Loading label={t("photo.identifying")} />}
       {error && <div className="error card">{error}</div>}
 
       {result && !result.available && (
@@ -238,35 +241,35 @@ export default function Photo() {
             className="btn primary"
             onClick={() => navigate(`/manual?date=${date}&meal=${meal}`)}
           >
-            Enter food manually
+            {t("product.enterManually")}
           </button>
         </div>
       )}
 
       {result && result.available && items.length === 0 && (
         <div className="empty card">
-          <p>{result.message || "No foods were detected in this photo."}</p>
+          <p>{result.message || t("photo.noFoods")}</p>
           <button
             className="btn primary"
             onClick={() => navigate(`/manual?date=${date}&meal=${meal}`)}
           >
-            Enter food manually
+            {t("product.enterManually")}
           </button>
         </div>
       )}
 
       {items.length > 0 && (
         <div className="card form">
-          <h3>Detected foods</h3>
-          <p className="muted small">
-            Adjust names, portions and nutrition before saving. Uncheck anything
-            that's wrong.
-          </p>
+          <h3>{t("photo.detected")}</h3>
+          <p className="muted small">{t("photo.detectedHint")}</p>
 
           {items.map((item) => {
             const m = itemMacros(item);
             return (
-              <div key={item._key} className={`detected-item${item.included ? "" : " excluded"}`}>
+              <div
+                key={item._key}
+                className={`detected-item${item.included ? "" : " excluded"}`}
+              >
                 <div className="detected-head">
                   <label className="checkbox">
                     <input
@@ -280,13 +283,13 @@ export default function Photo() {
                     value={item.name}
                     onChange={(e) => updateItem(item._key, "name", e.target.value)}
                   />
-                  <span className="muted small">
+                  <span className="muted small num">
                     {Math.round(item.confidence * 100)}%
                   </span>
                 </div>
                 <div className="detected-fields">
                   <label>
-                    Portion (g)
+                    {t("photo.portion")}
                     <input
                       type="number" min="1"
                       value={item.estimated_grams}
@@ -326,7 +329,7 @@ export default function Photo() {
                     />
                   </label>
                 </div>
-                <div className="muted small">
+                <div className="muted small num">
                   → {Math.round(m.kcal)} kcal · P {m.protein.toFixed(1)} · C{" "}
                   {m.carbs.toFixed(1)} · F {m.fat.toFixed(1)}
                 </div>
@@ -335,7 +338,7 @@ export default function Photo() {
           })}
 
           <label>
-            Add to meal
+            {t("photo.addToMeal")}
             <div className="chip-row">
               {MEAL_TYPES.map((m) => (
                 <button
@@ -344,7 +347,7 @@ export default function Photo() {
                   className={`chip${m === meal ? " active" : ""}`}
                   onClick={() => setMeal(m)}
                 >
-                  {MEAL_LABELS[m]}
+                  {t(`meals.${m}`)}
                 </button>
               ))}
             </div>
@@ -359,10 +362,14 @@ export default function Photo() {
 
           <div className="dialog-actions">
             <button className="btn ghost" onClick={() => navigate(-1)} disabled={saving}>
-              Cancel
+              {t("common.cancel")}
             </button>
-            <button className="btn primary" onClick={confirm} disabled={saving || included.length === 0}>
-              {saving ? "Saving…" : `Add ${included.length} item${included.length !== 1 ? "s" : ""}`}
+            <button
+              className="btn primary"
+              onClick={confirm}
+              disabled={saving || included.length === 0}
+            >
+              {saving ? t("common.saving") : t("photo.addN", { n: included.length })}
             </button>
           </div>
         </div>

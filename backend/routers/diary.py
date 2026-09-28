@@ -1,8 +1,12 @@
+import csv
+import io
+
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi.responses import StreamingResponse
 
 from auth import get_current_user
 from db import get_conn, insert_and_get_id
-from schemas import DATE_PATTERN, EntryCreate, EntryUpdate, InlineFood
+from schemas import DATE_PATTERN, CopyDayRequest, EntryCreate, EntryUpdate, InlineFood
 
 router = APIRouter(prefix="/api", tags=["diary"])
 
@@ -55,7 +59,8 @@ def _resolve_food_id(conn, user_id: int, payload: EntryCreate) -> int:
                 """
                 UPDATE foods
                 SET name = ?, brand = ?, image_url = ?, kcal_100g = ?,
-                    protein_100g = ?, carbs_100g = ?, fat_100g = ?, serving_size_g = ?
+                    protein_100g = ?, carbs_100g = ?, fat_100g = ?,
+                    fiber_100g = ?, sugar_100g = ?, sodium_100g = ?, serving_size_g = ?
                 WHERE id = ?
                 """,
                 (
@@ -66,6 +71,9 @@ def _resolve_food_id(conn, user_id: int, payload: EntryCreate) -> int:
                     food.protein_100g,
                     food.carbs_100g,
                     food.fat_100g,
+                    food.fiber_100g,
+                    food.sugar_100g,
+                    food.sodium_100g,
                     food.serving_size_g,
                     existing["id"],
                 ),
@@ -78,8 +86,9 @@ def _resolve_food_id(conn, user_id: int, payload: EntryCreate) -> int:
         """
         INSERT INTO foods (user_id, source, barcode, name, brand, image_url,
                            kcal_100g, protein_100g, carbs_100g, fat_100g,
+                           fiber_100g, sugar_100g, sodium_100g,
                            serving_size_g, is_saved)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
@@ -92,6 +101,9 @@ def _resolve_food_id(conn, user_id: int, payload: EntryCreate) -> int:
             food.protein_100g,
             food.carbs_100g,
             food.fat_100g,
+            food.fiber_100g,
+            food.sugar_100g,
+            food.sodium_100g,
             food.serving_size_g,
             int(is_saved),
         ),
@@ -176,6 +188,81 @@ def delete_entry(entry_id: int, user: dict = Depends(get_current_user)):
         return {"ok": True}
     finally:
         conn.close()
+
+
+@router.post("/diary/copy", status_code=201)
+def copy_day(payload: CopyDayRequest, user: dict = Depends(get_current_user)):
+    """Duplicate the entries of one day (optionally a single meal) onto another."""
+    if payload.from_date == payload.to_date and payload.meal_type is None:
+        raise HTTPException(status_code=400, detail="Source and target day are the same")
+
+    conn = get_conn()
+    try:
+        sql = "SELECT food_id, meal_type, grams FROM entries WHERE user_id = ? AND date = ?"
+        params = [user["id"], payload.from_date]
+        if payload.meal_type:
+            sql += " AND meal_type = ?"
+            params.append(payload.meal_type)
+        rows = conn.execute(sql, params).fetchall()
+
+        for row in rows:
+            conn.execute(
+                """
+                INSERT INTO entries (user_id, food_id, date, meal_type, grams)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (user["id"], row["food_id"], payload.to_date, row["meal_type"], row["grams"]),
+            )
+        conn.commit()
+        return {"copied": len(rows)}
+    finally:
+        conn.close()
+
+
+@router.get("/export.csv")
+def export_csv(user: dict = Depends(get_current_user)):
+    """The user's full diary as CSV."""
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            """
+            SELECT e.date, e.meal_type, f.name, f.brand, e.grams,
+                   f.kcal_100g, f.protein_100g, f.carbs_100g, f.fat_100g,
+                   f.fiber_100g, f.sugar_100g, f.sodium_100g, f.barcode
+            FROM entries e JOIN foods f ON f.id = e.food_id
+            WHERE e.user_id = ?
+            ORDER BY e.date, e.meal_type, e.created_at
+            """,
+            (user["id"],),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow([
+        "date", "meal", "food", "brand", "grams",
+        "kcal", "protein_g", "carbs_g", "fat_g",
+        "fiber_g", "sugar_g", "sodium_g", "barcode",
+    ])
+    for r in rows:
+        g = r["grams"]
+        def scaled(v):
+            return round(v * g / 100.0, 2) if v is not None else ""
+        writer.writerow([
+            r["date"], r["meal_type"], r["name"], r["brand"], g,
+            scaled(r["kcal_100g"]), scaled(r["protein_100g"]),
+            scaled(r["carbs_100g"]), scaled(r["fat_100g"]),
+            scaled(r["fiber_100g"]), scaled(r["sugar_100g"]),
+            scaled(r["sodium_100g"]), r["barcode"] or "",
+        ])
+
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=macromate-diary.csv"},
+    )
 
 
 @router.get("/diary/summary")

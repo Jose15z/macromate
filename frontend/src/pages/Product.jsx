@@ -3,10 +3,12 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import * as api from "../api";
 import Loading from "../components/Loading";
 import MacroCard from "../components/Macrocard";
-import { MEAL_LABELS, MEAL_TYPES, logTarget } from "../utils";
+import { useT } from "../i18n";
+import { MEAL_TYPES, logTarget } from "../utils";
 
 export default function Product() {
   const { barcode } = useParams();
+  const { t } = useT();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { date, meal: initialMeal } = logTarget(searchParams);
@@ -28,34 +30,43 @@ export default function Product() {
         setProduct(data);
         if (data.serving_size_g) setGrams(Math.round(data.serving_size_g));
       })
-      .catch((err) => alive && setError(err.message || "Product not found"));
+      .catch((err) => alive && setError(err.message || t("product.notFound")));
     return () => {
       alive = false;
     };
-  }, [barcode]);
+  }, [barcode, t]);
 
   if (error)
     return (
       <div className="empty card">
         <p>{error}</p>
-        <p className="muted small">
-          You can still add this food by hand if you know its nutrition values.
-        </p>
+        <p className="muted small">{t("product.stillManual")}</p>
         <div className="dialog-actions">
-          <button className="btn ghost" onClick={() => navigate(-1)}>← Back</button>
+          <button className="btn ghost" onClick={() => navigate(-1)}>
+            {t("common.back")}
+          </button>
           <button
             className="btn primary"
-            onClick={() => navigate(`/manual?date=${date}&meal=${meal}&barcode=${encodeURIComponent(barcode)}`)}
+            onClick={() =>
+              navigate(
+                `/manual?date=${date}&meal=${meal}&barcode=${encodeURIComponent(barcode)}`
+              )
+            }
           >
-            Enter manually
+            {t("product.enterManually")}
           </button>
         </div>
       </div>
     );
 
-  if (!product) return <Loading label="Looking up product…" />;
+  if (!product) return <Loading label={t("product.loading")} />;
 
   const scale = (Number(grams) || 0) / 100;
+  const extras = [
+    product.fiber_100g != null && `${t("product.fiber")} ${(product.fiber_100g * scale).toFixed(1)} g`,
+    product.sugar_100g != null && `${t("product.sugar")} ${(product.sugar_100g * scale).toFixed(1)} g`,
+    product.sodium_100g != null && `${t("product.sodium")} ${(product.sodium_100g * scale).toFixed(2)} g`,
+  ].filter(Boolean);
 
   async function handleAdd() {
     if (!Number(grams) || Number(grams) <= 0) return;
@@ -75,12 +86,15 @@ export default function Product() {
           protein_100g: product.protein_100g,
           carbs_100g: product.carbs_100g,
           fat_100g: product.fat_100g,
+          fiber_100g: product.fiber_100g,
+          sugar_100g: product.sugar_100g,
+          sodium_100g: product.sodium_100g,
           serving_size_g: product.serving_size_g,
         },
       });
       navigate(`/?date=${date}`);
     } catch (err) {
-      setError(err.message || "Failed to add entry");
+      setError(err.message || t("product.failed"));
       setSaving(false);
     }
   }
@@ -92,13 +106,13 @@ export default function Product() {
         <div>
           <h2>{product.name}</h2>
           {product.brand && <p className="muted">{product.brand}</p>}
-          <p className="muted small">Barcode {product.barcode}</p>
+          <p className="muted small">{t("product.barcode", { code: product.barcode })}</p>
         </div>
       </div>
 
       <div className="card form">
         <label>
-          Meal
+          {t("product.meal")}
           <div className="chip-row">
             {MEAL_TYPES.map((m) => (
               <button
@@ -107,14 +121,14 @@ export default function Product() {
                 className={`chip${m === meal ? " active" : ""}`}
                 onClick={() => setMeal(m)}
               >
-                {MEAL_LABELS[m]}
+                {t(`meals.${m}`)}
               </button>
             ))}
           </div>
         </label>
 
         <label>
-          Amount (g)
+          {t("qty.amount")}
           <input
             type="number"
             min="1"
@@ -131,26 +145,28 @@ export default function Product() {
                 className="chip"
                 onClick={() => setGrams(Math.round(product.serving_size_g * mult))}
               >
-                {mult} serving{mult !== 1 ? "s" : ""} (
-                {Math.round(product.serving_size_g * mult)} g)
+                {mult} × {t("qty.serving")} ({Math.round(product.serving_size_g * mult)} g)
               </button>
             ))}
           </div>
         )}
 
         <div className="macro-cards">
-          <MacroCard label="Calories" value={Math.round(product.kcal_100g * scale)} unit="kcal" />
-          <MacroCard label="Protein" value={(product.protein_100g * scale).toFixed(1)} unit="g" />
-          <MacroCard label="Carbs" value={(product.carbs_100g * scale).toFixed(1)} unit="g" />
-          <MacroCard label="Fat" value={(product.fat_100g * scale).toFixed(1)} unit="g" />
+          <MacroCard label={t("product.calories")} value={Math.round(product.kcal_100g * scale)} unit="kcal" />
+          <MacroCard label={t("dash.protein")} value={(product.protein_100g * scale).toFixed(1)} unit="g" />
+          <MacroCard label={t("dash.carbs")} value={(product.carbs_100g * scale).toFixed(1)} unit="g" />
+          <MacroCard label={t("dash.fat")} value={(product.fat_100g * scale).toFixed(1)} unit="g" />
         </div>
+        {extras.length > 0 && (
+          <p className="muted small num">{extras.join(" · ")}</p>
+        )}
 
         <div className="dialog-actions">
           <button className="btn ghost" onClick={() => navigate(-1)} disabled={saving}>
-            ← Back
+            {t("common.back")}
           </button>
           <button className="btn primary" onClick={handleAdd} disabled={saving}>
-            {saving ? "Adding…" : `Add to ${MEAL_LABELS[meal]}`}
+            {saving ? t("qty.adding") : t("product.addTo", { meal: t(`meals.${meal}`) })}
           </button>
         </div>
       </div>

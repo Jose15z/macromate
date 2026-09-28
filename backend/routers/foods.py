@@ -21,6 +21,9 @@ def food_dict(row) -> dict:
         "protein_100g": row["protein_100g"],
         "carbs_100g": row["carbs_100g"],
         "fat_100g": row["fat_100g"],
+        "fiber_100g": row["fiber_100g"],
+        "sugar_100g": row["sugar_100g"],
+        "sodium_100g": row["sodium_100g"],
         "serving_size_g": row["serving_size_g"],
         "is_saved": bool(row["is_saved"]),
     }
@@ -55,8 +58,9 @@ def create_food(payload: FoodCreate, user: dict = Depends(get_current_user)):
             """
             INSERT INTO foods (user_id, source, barcode, name, brand, image_url,
                                kcal_100g, protein_100g, carbs_100g, fat_100g,
+                               fiber_100g, sugar_100g, sodium_100g,
                                serving_size_g, is_saved)
-            VALUES (?, 'manual', ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            VALUES (?, 'manual', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             """,
             (
                 user["id"],
@@ -68,6 +72,9 @@ def create_food(payload: FoodCreate, user: dict = Depends(get_current_user)):
                 macros["protein_100g"],
                 macros["carbs_100g"],
                 macros["fat_100g"],
+                macros["fiber_100g"],
+                macros["sugar_100g"],
+                macros["sodium_100g"],
                 payload.serving_size_g,
             ),
         )

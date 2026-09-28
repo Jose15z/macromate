@@ -1,9 +1,11 @@
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useT } from "../i18n";
 import { logTarget } from "../utils";
 
 export default function Scan() {
+  const { t } = useT();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { date, meal } = logTarget(searchParams);
@@ -24,7 +26,9 @@ export default function Scan() {
         if (result && !foundRef.current) {
           foundRef.current = true;
           controls.stop();
-          navigate(`/product/${encodeURIComponent(result.getText())}?date=${date}&meal=${meal}`);
+          navigate(
+            `/product/${encodeURIComponent(result.getText())}?date=${date}&meal=${meal}`
+          );
         }
       })
       .then((controls) => {
@@ -33,22 +37,16 @@ export default function Scan() {
       })
       .catch((err) => {
         if (cancelled) return;
-        if (err?.name === "NotAllowedError") {
-          setCameraError(
-            "Camera access was denied. Allow camera permission in your browser, or type the barcode below."
-          );
-        } else if (err?.name === "NotFoundError") {
-          setCameraError("No camera found on this device. Type the barcode below instead.");
-        } else {
-          setCameraError("Could not start the camera. Type the barcode below instead.");
-        }
+        if (err?.name === "NotAllowedError") setCameraError(t("scan.denied"));
+        else if (err?.name === "NotFoundError") setCameraError(t("scan.noCamera"));
+        else setCameraError(t("scan.failed"));
       });
 
     return () => {
       cancelled = true;
       controlsRef.current?.stop();
     };
-  }, [navigate, date, meal]);
+  }, [navigate, date, meal, t]);
 
   function submitManual(e) {
     e.preventDefault();
@@ -59,10 +57,8 @@ export default function Scan() {
 
   return (
     <div className="scan-page">
-      <h2>Scan a barcode</h2>
-      <p className="muted small">
-        Point your camera at a product barcode — it looks up nutrition on OpenFoodFacts.
-      </p>
+      <h2>{t("scan.title")}</h2>
+      <p className="muted small">{t("scan.intro")}</p>
 
       {cameraError ? (
         <div className="card empty">{cameraError}</div>
@@ -77,17 +73,17 @@ export default function Scan() {
       <form onSubmit={submitManual} className="manual-barcode">
         <input
           inputMode="numeric"
-          placeholder="…or type the barcode number"
+          placeholder={t("scan.typePlaceholder")}
           value={manualCode}
           onChange={(e) => setManualCode(e.target.value)}
         />
         <button className="btn primary" disabled={!manualCode.trim()}>
-          Search
+          {t("scan.search")}
         </button>
       </form>
 
       <button className="btn ghost" onClick={() => navigate(-1)}>
-        ← Back
+        {t("common.back")}
       </button>
     </div>
   );

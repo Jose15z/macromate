@@ -1,3 +1,5 @@
+import { getLang, translate } from "./i18n";
+
 export function todayISO() {
   const d = new Date();
   const off = d.getTimezoneOffset();
@@ -14,23 +16,22 @@ export function shiftDate(dateStr, days) {
 }
 
 export function formatDate(dateStr) {
-  if (dateStr === todayISO()) return "Today";
-  if (dateStr === shiftDate(todayISO(), -1)) return "Yesterday";
-  return new Date(`${dateStr}T12:00:00`).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+  if (dateStr === todayISO()) return translate("date.today");
+  if (dateStr === shiftDate(todayISO(), -1)) return translate("date.yesterday");
+  return new Date(`${dateStr}T12:00:00`).toLocaleDateString(
+    getLang() === "es" ? "es" : undefined,
+    { weekday: "short", month: "short", day: "numeric" }
+  );
+}
+
+export function shortDate(dateStr) {
+  return new Date(`${dateStr}T12:00:00`).toLocaleDateString(
+    getLang() === "es" ? "es" : undefined,
+    { month: "short", day: "numeric" }
+  );
 }
 
 export const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
-
-export const MEAL_LABELS = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  dinner: "Dinner",
-  snack: "Snacks",
-};
 
 /** Read the target date + meal from the URL, with safe defaults. */
 export function logTarget(searchParams) {

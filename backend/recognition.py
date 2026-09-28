@@ -158,89 +158,108 @@ GEMINI_SCHEMA = {
 }
 
 
+def gemini_structured(parts: list, schema: dict) -> tuple[str | None, str | None]:
+    """Run a structured generateContent request, cascading across the models
+    the key can use. Returns (json_text, None) on success or (None, error).
+    The special error value "content" means the input itself was rejected."""
+    global _gemini_preferred
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return None, "not_configured"
+
+    body = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": schema,
+        },
+    }
+
+    last_error = "no models available"
+    for model in _gemini_candidates(api_key)[:GEMINI_MAX_ATTEMPTS]:
+        try:
+            resp = requests.post(
+                GEMINI_URL.format(model=model),
+                json=body,
+                # key goes in a header, never in the URL
+                headers={"x-goog-api-key": api_key},
+                timeout=60,
+            )
+        except requests.RequestException:
+            return None, "network"
+
+        if resp.status_code == 200:
+            try:
+                data = resp.json()
+                text_parts = data["candidates"][0]["content"]["parts"]
+                text = "".join(p.get("text", "") for p in text_parts)
+            except (KeyError, IndexError, ValueError):
+                # blocked/empty candidates — a content issue, so switching
+                # models won't help
+                return None, "content"
+            _gemini_preferred = model
+            return text, None
+
+        try:
+            detail = resp.json()["error"]["message"][:200]
+        except (ValueError, KeyError, TypeError):
+            detail = ""
+        last_error = f"HTTP {resp.status_code} on {model}. {detail}".strip()
+
+        if resp.status_code in (404, 429, 503):
+            # retired, rate-limited, or overloaded — another model may work
+            if _gemini_preferred == model:
+                _gemini_preferred = None
+            continue
+        break  # auth/config errors (400/401/403) affect every model alike
+
+    return None, last_error
+
+
 class GeminiProvider:
     name = "gemini"
 
-    def _call(self, api_key: str, model: str, body: dict):
-        return requests.post(
-            GEMINI_URL.format(model=model),
-            json=body,
-            # key goes in a header, never in the URL
-            headers={"x-goog-api-key": api_key},
-            timeout=60,
-        )
-
     def recognize(self, image_bytes: bytes, media_type: str) -> RecognitionResult:
-        global _gemini_preferred
-        api_key = os.environ["GEMINI_API_KEY"]
-        body = {
-            "contents": [
-                {
-                    "parts": [
-                        {
-                            "inlineData": {
-                                "mimeType": media_type,
-                                "data": base64.standard_b64encode(image_bytes).decode(),
-                            }
-                        },
-                        {"text": PROMPT},
-                    ]
+        parts = [
+            {
+                "inlineData": {
+                    "mimeType": media_type,
+                    "data": base64.standard_b64encode(image_bytes).decode(),
                 }
-            ],
-            "generationConfig": {
-                "responseMimeType": "application/json",
-                "responseSchema": GEMINI_SCHEMA,
             },
-        }
+            {"text": PROMPT},
+        ]
+        text, error = gemini_structured(parts, GEMINI_SCHEMA)
 
-        last_error = "no models available"
-        for model in _gemini_candidates(api_key)[:GEMINI_MAX_ATTEMPTS]:
-            try:
-                resp = self._call(api_key, model, body)
-            except requests.RequestException:
-                return RecognitionResult(
-                    available=True,
-                    provider=self.name,
-                    message="Could not reach the recognition service. Try again in a moment.",
-                )
+        if error == "network":
+            return RecognitionResult(
+                available=True,
+                provider=self.name,
+                message="Could not reach the recognition service. Try again in a moment.",
+            )
+        if error == "content":
+            return RecognitionResult(
+                available=True,
+                provider=self.name,
+                message="The image could not be analyzed. Try another photo or add foods manually.",
+            )
+        if error is not None:
+            return RecognitionResult(
+                available=True,
+                provider=self.name,
+                message=f"Recognition is temporarily unavailable ({error}) — try again in a minute.",
+            )
 
-            if resp.status_code == 200:
-                try:
-                    data = resp.json()
-                    parts = data["candidates"][0]["content"]["parts"]
-                    text = "".join(p.get("text", "") for p in parts)
-                    output = RecognitionOutput.model_validate_json(text)
-                except (KeyError, IndexError, ValueError):
-                    # blocked/empty candidates or malformed JSON — a content
-                    # issue, so switching models won't help
-                    return RecognitionResult(
-                        available=True,
-                        provider=self.name,
-                        message="The image could not be analyzed. Try another photo or add foods manually.",
-                    )
-                _gemini_preferred = model
-                return RecognitionResult(
-                    available=True, provider=self.name, foods=output.foods
-                )
+        try:
+            output = RecognitionOutput.model_validate_json(text)
+        except ValueError:
+            return RecognitionResult(
+                available=True,
+                provider=self.name,
+                message="The image could not be analyzed. Try another photo or add foods manually.",
+            )
 
-            try:
-                detail = resp.json()["error"]["message"][:200]
-            except (ValueError, KeyError, TypeError):
-                detail = ""
-            last_error = f"HTTP {resp.status_code} on {model}. {detail}".strip()
-
-            if resp.status_code in (404, 429, 503):
-                # retired, rate-limited, or overloaded — another model may work
-                if _gemini_preferred == model:
-                    _gemini_preferred = None
-                continue
-            break  # auth/config errors (400/401/403) affect every model alike
-
-        return RecognitionResult(
-            available=True,
-            provider=self.name,
-            message=f"Recognition is temporarily unavailable ({last_error}) — try again in a minute.",
-        )
+        return RecognitionResult(available=True, provider=self.name, foods=output.foods)
 
 
 class ClaudeProvider:

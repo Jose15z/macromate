@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from db import init_db
-from routers import auth_routes, diary, foods, products, recognize
+from routers import ai, auth_routes, diary, foods, products, recipes, recognize, search, weights
 
 app = FastAPI(title="MacroMate API")
 
@@ -23,6 +23,10 @@ app.include_router(products.router)
 app.include_router(foods.router)
 app.include_router(diary.router)
 app.include_router(recognize.router)
+app.include_router(search.router)
+app.include_router(weights.router)
+app.include_router(recipes.router)
+app.include_router(ai.router)
 
 
 @app.get("/api/health")

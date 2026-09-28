@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import AuthHero from "../components/AuthHero";
+import { useT } from "../i18n";
 
 export default function Register() {
   const { register } = useAuth();
+  const { t } = useT();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -16,7 +18,7 @@ export default function Register() {
     e.preventDefault();
     setError("");
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t("auth.passwordTooShort"));
       return;
     }
     setBusy(true);
@@ -24,7 +26,7 @@ export default function Register() {
       await register(email.trim(), password, displayName.trim());
       navigate("/goals", { replace: true });
     } catch (err) {
-      setError(err.message || "Registration failed");
+      setError(err.message || t("auth.registerFailed"));
     } finally {
       setBusy(false);
     }
@@ -32,19 +34,19 @@ export default function Register() {
 
   return (
     <div className="auth-page">
-      <AuthHero tagline="Create your account — track calories and macros across every meal." />
+      <AuthHero tagline={t("auth.registerTagline")} />
       <form onSubmit={handleSubmit} className="form card">
         <label>
-          Name
+          {t("auth.name")}
           <input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             autoComplete="name"
-            placeholder="How should we call you?"
+            placeholder={t("auth.namePlaceholder")}
           />
         </label>
         <label>
-          Email
+          {t("auth.email")}
           <input
             type="email"
             value={email}
@@ -54,7 +56,7 @@ export default function Register() {
           />
         </label>
         <label>
-          Password
+          {t("auth.password")}
           <input
             type="password"
             value={password}
@@ -62,16 +64,16 @@ export default function Register() {
             autoComplete="new-password"
             required
             minLength={8}
-            placeholder="At least 8 characters"
+            placeholder={t("auth.passwordMin")}
           />
         </label>
         {error && <div className="error">{error}</div>}
         <button className="btn primary" disabled={busy}>
-          {busy ? "Creating account…" : "Sign up"}
+          {busy ? t("auth.creating") : t("auth.signup")}
         </button>
       </form>
       <p className="muted">
-        Already registered? <Link to="/login">Log in</Link>
+        {t("auth.haveAccount")} <Link to="/login">{t("auth.login")}</Link>
       </p>
     </div>
   );

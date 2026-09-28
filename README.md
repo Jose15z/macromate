@@ -6,13 +6,14 @@
 
 ## Features
 
-- **Daily diary** — foods organized into Breakfast / Lunch / Dinner / Snacks, with per-food, per-meal and per-day macro totals, a calorie ring, and progress bars against your personal targets. Browse any past day.
-- **Barcode scanning** — point your camera at a product barcode; nutrition comes from [OpenFoodFacts](https://world.openfoodfacts.org) (2.9M+ products). Manual barcode entry as a fallback.
+- **Daily diary** — foods organized into Breakfast / Lunch / Dinner / Snacks, with per-food, per-meal and per-day macro totals, a calorie ring, and progress bars against your personal targets. Browse any past day, or copy yesterday's meals in one tap.
+- **Progress view** — daily-calorie chart with your goal line, logging streak, 7/30-day averages, and a body-weight log with its own trend chart.
+- **Barcode scanning & text search** — scan a product barcode or search by name; nutrition comes from [OpenFoodFacts](https://world.openfoodfacts.org) (2.9M+ products), including fiber, sugar and sodium when available.
 - **AI photo recognition** — photograph a meal and Gemini identifies the foods, estimates portion sizes, and fills in the macros. Everything is editable before anything is saved, and the feature degrades gracefully when no API key is configured.
-- **Manual foods** — create reusable foods with nutrition entered per serving or per 100 g; the app normalizes and rescales automatically for any amount you log.
-- **Food library** — Recent, Saved, Frequent, and Scanned lists with search, so day-to-day logging takes seconds.
-- **Accounts & goals** — registration/login with hashed passwords and revocable tokens; every user's data is fully isolated. Set daily targets for calories, protein, carbs, and fat.
-- **Mobile-first UI** — responsive layout, light + dark themes, camera integration designed for phones.
+- **AI meal ideas** — "What should I eat?" suggests dishes that fit the macros you have left today.
+- **Manual foods & recipes** — create reusable foods (per serving or per 100 g), and group foods into recipes you log in one tap with a portion multiplier.
+- **Accounts & goals** — registration/login with hashed passwords and revocable tokens; password reset by email, change-password, CSV export, and account deletion. A Mifflin-St Jeor calculator suggests calorie/macro targets.
+- **Bilingual, installable, mobile-first** — English/Spanish (auto-detected, switchable), installable as a PWA on iOS/Android, light + dark themes.
 
 ## Architecture
 
@@ -80,6 +81,8 @@ All optional — the app runs without any of them.
 | `GEMINI_API_KEY` | backend | Enables AI photo recognition via Google Gemini ([free key](https://aistudio.google.com/apikey)). |
 | `GEMINI_MODEL` | backend | Pin a specific Gemini model; by default the best available flash model is auto-discovered. |
 | `ANTHROPIC_API_KEY` | backend | Alternative photo-recognition provider (Claude). Gemini wins if both are set. |
+| `RESEND_API_KEY` | backend | Enables password-reset emails via [Resend](https://resend.com). `MAIL_FROM` overrides the sender. |
+| `FRONTEND_URL` | backend | Base URL used in password-reset links. Defaults to the production frontend. |
 | `VITE_API_BASE` | frontend (build time) | Backend URL for the deployed frontend. Defaults to `http://localhost:8000`. |
 
 ## API overview

@@ -126,6 +126,34 @@ _SQLITE_SCHEMA = """
     );
 
     CREATE INDEX IF NOT EXISTS idx_entries_user_date ON entries(user_id, date);
+
+    CREATE TABLE IF NOT EXISTS weights (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        date TEXT NOT NULL,
+        weight_kg REAL NOT NULL CHECK (weight_kg > 0),
+        UNIQUE (user_id, date)
+    );
+
+    CREATE TABLE IF NOT EXISTS recipes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS recipe_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+        food_id INTEGER NOT NULL REFERENCES foods(id) ON DELETE CASCADE,
+        grams REAL NOT NULL CHECK (grams > 0)
+    );
+
+    CREATE TABLE IF NOT EXISTS password_resets (
+        token TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TEXT NOT NULL
+    );
 """
 
 # Same shape for PostgreSQL. Timestamps stay ISO-8601 TEXT so ordering and
@@ -188,7 +216,45 @@ _PG_SCHEMA = f"""
     );
 
     CREATE INDEX IF NOT EXISTS idx_entries_user_date ON entries(user_id, date);
+
+    CREATE TABLE IF NOT EXISTS weights (
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        date TEXT NOT NULL,
+        weight_kg DOUBLE PRECISION NOT NULL CHECK (weight_kg > 0),
+        UNIQUE (user_id, date)
+    );
+
+    CREATE TABLE IF NOT EXISTS recipes (
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT {_PG_NOW}
+    );
+
+    CREATE TABLE IF NOT EXISTS recipe_items (
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        recipe_id BIGINT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+        food_id BIGINT NOT NULL REFERENCES foods(id) ON DELETE CASCADE,
+        grams DOUBLE PRECISION NOT NULL CHECK (grams > 0)
+    );
+
+    CREATE TABLE IF NOT EXISTS password_resets (
+        token TEXT PRIMARY KEY,
+        user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TEXT NOT NULL
+    );
 """
+
+# Nullable nutrition columns added after the original schema shipped.
+_FOOD_EXTRA_COLUMNS = ["fiber_100g", "sugar_100g", "sodium_100g"]
+
+
+def _migrate_food_columns_sqlite(conn):
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(foods)")}
+    for col in _FOOD_EXTRA_COLUMNS:
+        if col not in existing:
+            conn.execute(f"ALTER TABLE foods ADD COLUMN {col} REAL")
 
 
 def init_db():
@@ -200,9 +266,14 @@ def init_db():
                 for statement in _PG_SCHEMA.split(";"):
                     if statement.strip():
                         cur.execute(statement)
+                for col in _FOOD_EXTRA_COLUMNS:
+                    cur.execute(
+                        f"ALTER TABLE foods ADD COLUMN IF NOT EXISTS {col} DOUBLE PRECISION"
+                    )
         return
 
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(_SQLITE_SCHEMA)
+    _migrate_food_columns_sqlite(conn)
     conn.commit()
     conn.close()

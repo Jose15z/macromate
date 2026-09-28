@@ -1,3 +1,5 @@
+import { translate } from "./i18n";
+
 const BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 const TOKEN_KEY = "mm_token";
@@ -18,7 +20,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, { method = "GET", body, formData } = {}) {
+async function request(path, { method = "GET", body, formData, raw = false } = {}) {
   const headers = {};
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -32,7 +34,7 @@ async function request(path, { method = "GET", body, formData } = {}) {
       body: body ? JSON.stringify(body) : formData,
     });
   } catch {
-    throw new ApiError(0, "Cannot reach the server. Is the backend running?");
+    throw new ApiError(0, translate("api.network"));
   }
 
   if (res.status === 401 && token && !path.startsWith("/api/auth/")) {
@@ -55,7 +57,7 @@ async function request(path, { method = "GET", body, formData } = {}) {
     throw new ApiError(res.status, detail);
   }
 
-  return res.json();
+  return raw ? res : res.json();
 }
 
 // ---- auth ----
@@ -70,14 +72,32 @@ export const login = (email, password) =>
 
 export const logout = () => request("/api/auth/logout", { method: "POST" });
 
+export const forgotPassword = (email) =>
+  request("/api/auth/forgot", { method: "POST", body: { email } });
+
+export const resetPassword = (token, password) =>
+  request("/api/auth/reset", { method: "POST", body: { token, password } });
+
 export const getMe = () => request("/api/me");
 
 export const updateProfile = (fields) =>
   request("/api/me", { method: "PUT", body: fields });
 
+export const changePassword = (currentPassword, newPassword) =>
+  request("/api/me/password", {
+    method: "PUT",
+    body: { current_password: currentPassword, new_password: newPassword },
+  });
+
+export const deleteAccount = (password) =>
+  request("/api/me/delete", { method: "POST", body: { password } });
+
 // ---- products (OpenFoodFacts) ----
 export const fetchProduct = (barcode) =>
   request(`/api/product/${encodeURIComponent(barcode)}`);
+
+export const searchProducts = (q) =>
+  request(`/api/search-products?q=${encodeURIComponent(q)}`);
 
 // ---- foods ----
 export const createFood = (food) =>
@@ -110,9 +130,56 @@ export const deleteEntry = (id) =>
 export const fetchSummary = (start, end) =>
   request(`/api/diary/summary?start=${start}&end=${end}`);
 
-// ---- photo recognition ----
+export const copyDay = (fromDate, toDate, mealType = null) =>
+  request("/api/diary/copy", {
+    method: "POST",
+    body: { from_date: fromDate, to_date: toDate, meal_type: mealType },
+  });
+
+export async function downloadExport() {
+  const res = await request("/api/export.csv", { raw: true });
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "macromate-diary.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ---- weights ----
+export const upsertWeight = (date, weightKg) =>
+  request("/api/weights", { method: "POST", body: { date, weight_kg: weightKg } });
+
+export const listWeights = (start, end) =>
+  request(`/api/weights?start=${start}&end=${end}`);
+
+// ---- recipes ----
+export const listRecipes = () => request("/api/recipes");
+
+export const createRecipe = (name, items) =>
+  request("/api/recipes", { method: "POST", body: { name, items } });
+
+export const deleteRecipe = (id) =>
+  request(`/api/recipes/${id}`, { method: "DELETE" });
+
+export const logRecipe = (id, date, mealType, factor = 1) =>
+  request(`/api/recipes/${id}/log`, {
+    method: "POST",
+    body: { date, meal_type: mealType, factor },
+  });
+
+// ---- AI ----
 export const recognizePhoto = (file) => {
   const formData = new FormData();
   formData.append("image", file);
   return request("/api/recognize", { method: "POST", formData });
 };
+
+export const suggestMeals = (date, mealType, lang) =>
+  request("/api/suggest", {
+    method: "POST",
+    body: { date, meal_type: mealType, lang },
+  });

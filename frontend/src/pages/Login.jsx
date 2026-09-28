@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import AuthHero from "../components/AuthHero";
+import { useT } from "../i18n";
 
 export default function Login() {
   const { login } = useAuth();
+  const { t } = useT();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState("");
@@ -21,7 +23,7 @@ export default function Login() {
       const from = location.state?.from;
       navigate(from ? from.pathname + from.search : "/", { replace: true });
     } catch (err) {
-      setError(err.message || "Login failed");
+      setError(err.message || t("auth.loginFailed"));
     } finally {
       setBusy(false);
     }
@@ -29,10 +31,10 @@ export default function Login() {
 
   return (
     <div className="auth-page">
-      <AuthHero tagline="Welcome back — log in to keep tracking your macros." />
+      <AuthHero tagline={t("auth.loginTagline")} />
       <form onSubmit={handleSubmit} className="form card">
         <label>
-          Email
+          {t("auth.email")}
           <input
             type="email"
             value={email}
@@ -42,7 +44,7 @@ export default function Login() {
           />
         </label>
         <label>
-          Password
+          {t("auth.password")}
           <input
             type="password"
             value={password}
@@ -53,11 +55,14 @@ export default function Login() {
         </label>
         {error && <div className="error">{error}</div>}
         <button className="btn primary" disabled={busy}>
-          {busy ? "Logging in…" : "Log in"}
+          {busy ? t("auth.loggingIn") : t("auth.login")}
         </button>
+        <Link to="/forgot" className="muted small" style={{ textAlign: "center" }}>
+          {t("auth.forgot")}
+        </Link>
       </form>
       <p className="muted">
-        No account yet? <Link to="/register">Create one</Link>
+        {t("auth.noAccount")} <Link to="/register">{t("auth.createOne")}</Link>
       </p>
     </div>
   );

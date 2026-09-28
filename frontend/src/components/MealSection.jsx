@@ -1,14 +1,9 @@
 import { useState } from "react";
+import { useT } from "../i18n";
 import Icon from "./Icon";
 
-const MEAL_LABELS = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  dinner: "Dinner",
-  snack: "Snacks",
-};
-
 function EntryRow({ entry, onUpdateGrams, onDelete }) {
+  const { t } = useT();
   const [editing, setEditing] = useState(false);
   const [grams, setGrams] = useState(entry.grams);
   const [busy, setBusy] = useState(false);
@@ -54,7 +49,7 @@ function EntryRow({ entry, onUpdateGrams, onDelete }) {
               />
               g{" "}
               <button className="btn tiny" onClick={save} disabled={busy}>
-                Save
+                {t("meal.save")}
               </button>
               <button
                 className="btn tiny ghost"
@@ -64,7 +59,7 @@ function EntryRow({ entry, onUpdateGrams, onDelete }) {
                 }}
                 disabled={busy}
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </span>
           ) : (
@@ -78,10 +73,18 @@ function EntryRow({ entry, onUpdateGrams, onDelete }) {
         <div className="entry-kcal">{Math.round(entry.kcal)} kcal</div>
         {!editing && (
           <div className="entry-actions">
-            <button className="icon-btn" title="Edit amount" onClick={() => setEditing(true)}>
+            <button
+              className="icon-btn"
+              title={t("meal.editAmount")}
+              onClick={() => setEditing(true)}
+            >
               <Icon name="pencil" size={14} />
             </button>
-            <button className="icon-btn danger" title="Remove" onClick={() => onDelete(entry)}>
+            <button
+              className="icon-btn danger"
+              title={t("meal.remove")}
+              onClick={() => onDelete(entry)}
+            >
               <Icon name="x" size={14} />
             </button>
           </div>
@@ -91,18 +94,36 @@ function EntryRow({ entry, onUpdateGrams, onDelete }) {
   );
 }
 
-export default function MealSection({ meal, onAdd, onUpdateGrams, onDelete }) {
+export default function MealSection({
+  meal,
+  onAdd,
+  onUpdateGrams,
+  onDelete,
+  onCopyYesterday,
+}) {
+  const { t } = useT();
+  const [copying, setCopying] = useState(false);
+
+  async function copyYesterday() {
+    setCopying(true);
+    try {
+      await onCopyYesterday(meal.meal_type);
+    } finally {
+      setCopying(false);
+    }
+  }
+
   return (
     <section className="meal card">
       <div className="meal-head">
-        <h3>{MEAL_LABELS[meal.meal_type]}</h3>
+        <h3>{t(`meals.${meal.meal_type}`)}</h3>
         <span className="meal-kcal">
           {meal.entries.length > 0 && `${Math.round(meal.totals.kcal)} kcal`}
         </span>
       </div>
 
       {meal.entries.length === 0 ? (
-        <p className="muted small">No foods logged yet.</p>
+        <p className="muted small">{t("meal.noFoods")}</p>
       ) : (
         meal.entries.map((entry) => (
           <EntryRow
@@ -114,10 +135,22 @@ export default function MealSection({ meal, onAdd, onUpdateGrams, onDelete }) {
         ))
       )}
 
-      <button className="btn ghost add-food-btn" onClick={() => onAdd(meal.meal_type)}>
-        <Icon name="plus" size={14} />
-        Add food
-      </button>
+      <div className="meal-actions">
+        <button className="btn ghost add-food-btn" onClick={() => onAdd(meal.meal_type)}>
+          <Icon name="plus" size={14} />
+          {t("meal.addFood")}
+        </button>
+        {meal.entries.length === 0 && onCopyYesterday && (
+          <button
+            className="btn ghost add-food-btn"
+            onClick={copyYesterday}
+            disabled={copying}
+          >
+            <Icon name="copy" size={14} />
+            {t("meal.copyYesterday")}
+          </button>
+        )}
+      </div>
     </section>
   );
 }
