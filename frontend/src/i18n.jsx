@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const STRINGS = {
   en: {
@@ -243,6 +243,12 @@ const STRINGS = {
     "account.logout": "Log out",
 
     "api.network": "Cannot reach the server. Is the backend running?",
+
+    "seo.heading": "What you can do with MacroMate",
+    "seo.f1": "Scan barcodes — nutrition for 2.9M+ products via OpenFoodFacts.",
+    "seo.f2": "Snap a photo of your plate — AI identifies the foods and estimates portions.",
+    "seo.f3": "Track calories, protein, carbs and fat against your daily goals.",
+    "seo.f4": "Recipes, weight log, progress charts and CSV export — free.",
   },
 
   es: {
@@ -487,6 +493,12 @@ const STRINGS = {
     "account.logout": "Cerrar sesión",
 
     "api.network": "No se pudo conectar con el servidor. ¿Está encendido?",
+
+    "seo.heading": "Qué puedes hacer con MacroMate",
+    "seo.f1": "Escanea códigos de barras: nutrición de más de 2,9 millones de productos (OpenFoodFacts).",
+    "seo.f2": "Haz una foto del plato: la IA identifica los alimentos y estima las porciones.",
+    "seo.f3": "Sigue calorías, proteína, carbohidratos y grasa frente a tus objetivos diarios.",
+    "seo.f4": "Recetas, registro de peso, gráficas de progreso y exportación CSV — gratis.",
   },
 };
 
@@ -519,6 +531,10 @@ const I18nContext = createContext(null);
 
 export function I18nProvider({ children }) {
   const [lang, setLangState] = useState(currentLang);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const value = useMemo(() => {
     const t = (key, vars) => {

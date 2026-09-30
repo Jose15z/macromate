@@ -64,6 +64,16 @@ export default function Login() {
       <p className="muted">
         {t("auth.noAccount")} <Link to="/register">{t("auth.createOne")}</Link>
       </p>
+
+      <section className="login-features" aria-label={t("seo.heading")}>
+        <h2>{t("seo.heading")}</h2>
+        <ul>
+          <li>{t("seo.f1")}</li>
+          <li>{t("seo.f2")}</li>
+          <li>{t("seo.f3")}</li>
+          <li>{t("seo.f4")}</li>
+        </ul>
+      </section>
     </div>
   );
 }
